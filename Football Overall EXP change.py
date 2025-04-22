@@ -127,17 +127,18 @@ for i, exp_type in enumerate(exp_types[:6]):
 
     avg_change = df_changes.groupby('Time Band')['Change'].mean()
 
-    # Plot
-    fig, ax = plt.subplots(figsize=(10, 5))
+    # Plot (bigger, clearer, full-width)
+    fig, ax = plt.subplots(figsize=(12, 6))  # Wider and taller
     ax.plot(avg_change.index, avg_change.values, marker='o', color='black')
-    ax.set_title(f"{exp_type} Expectancy Change")
+    ax.set_title(f"{exp_type} Expectancy Change", fontsize=14)
     ax.set_xlabel("Time Band (Minutes)")
     ax.set_ylabel("Avg Change")
     ax.grid(True)
     fig.tight_layout()
 
     plots.append(fig)
-    cols[i % 2].pyplot(fig)
+    with cols[i % 2]:
+        st.pyplot(fig, use_container_width=True)
 
 # --- Export to PDF Button ---
 def export_all_to_pdf(figures):
