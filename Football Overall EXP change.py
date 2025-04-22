@@ -41,7 +41,7 @@ scoreline_filter = st.sidebar.multiselect("Goal Scoreline Filter", scoreline_opt
 
 st.markdown("*Favourites are determined using Goal Expectancy at the earliest available minute in each match")
 
-# --- Functions ---
+# --- Helper Functions ---
 
 def classify_favouritism(row):
     diff = abs(row['GOAL_EXP_HOME'] - row['GOAL_EXP_AWAY'])
@@ -74,6 +74,8 @@ def compute_exp_by_role(df, role='Favourite', target='Goals'):
 
     for event_id, group in df.groupby('SRC_EVENT_ID'):
         group = group.sort_values('MINUTES')
+        if group.empty:
+            continue
         earliest_minute = group['MINUTES'].min()
         base_row = group[group['MINUTES'] == earliest_minute].iloc[0]
 
@@ -81,7 +83,7 @@ def compute_exp_by_role(df, role='Favourite', target='Goals'):
         away_exp_0 = base_row['GOAL_EXP_AWAY']
         home_is_fav = home_exp_0 > away_exp_0
         if home_exp_0 == away_exp_0:
-            continue  # skip events with no clear favourite
+            continue
 
         base_val = base_row[home_col if (role == 'Favourite' and home_is_fav) or (role == 'Underdog' and not home_is_fav) else away_col]
         prev_val = base_val
@@ -105,40 +107,44 @@ def compute_exp_by_role(df, role='Favourite', target='Goals'):
                 })
     return pd.DataFrame(change_data)
 
-# --- Graph Generation ---
+# --- Generate Graphs ---
 plots = []
-cols = st.columns(2) if len(exp_types) > 1 else [st]
 
-for i, exp_type in enumerate(exp_types[:6]):
-    role = 'Favourite' if 'Favourite' in exp_type else 'Underdog'
-    market = 'Goals' if 'Goals' in exp_type else 'Corners'
-    df_changes = compute_exp_by_role(df, role=role, target=market)
+if exp_types:
+    cols = st.columns(2)
 
-    df_changes['Favouritism'] = df_changes.apply(classify_favouritism, axis=1)
-    df_changes['Scoreline'] = df_changes.apply(classify_scoreline_simple, axis=1)
-    df_changes = df_changes[df_changes['Favouritism'].isin(fav_filter) & df_changes['Scoreline'].isin(scoreline_filter)]
+    for i, exp_type in enumerate(exp_types[:6]):
+        role = 'Favourite' if 'Favourite' in exp_type else 'Underdog'
+        market = 'Goals' if 'Goals' in exp_type else 'Corners'
+        df_changes = compute_exp_by_role(df, role=role, target=market)
 
-    df_changes['Time Band'] = pd.cut(
-        df_changes['MINUTES'],
-        bins=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 1000],
-        right=False,
-        labels=[f"{i}-{i+5}" for i in range(0, 90, 5)]
-    )
+        df_changes['Favouritism'] = df_changes.apply(classify_favouritism, axis=1)
+        df_changes['Scoreline'] = df_changes.apply(classify_scoreline_simple, axis=1)
+        df_changes = df_changes[df_changes['Favouritism'].isin(fav_filter) & df_changes['Scoreline'].isin(scoreline_filter)]
 
-    avg_change = df_changes.groupby('Time Band')['Change'].mean()
+        df_changes['Time Band'] = pd.cut(
+            df_changes['MINUTES'],
+            bins=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 1000],
+            right=False,
+            labels=[f"{i}-{i+5}" for i in range(0, 90, 5)]
+        )
 
-    # Plot (bigger, clearer, full-width)
-    fig, ax = plt.subplots(figsize=(12, 6))  # Wider and taller
-    ax.plot(avg_change.index, avg_change.values, marker='o', color='black')
-    ax.set_title(f"{exp_type} Expectancy Change", fontsize=14)
-    ax.set_xlabel("Time Band (Minutes)")
-    ax.set_ylabel("Avg Change")
-    ax.grid(True)
-    fig.tight_layout()
+        avg_change = df_changes.groupby('Time Band')['Change'].mean()
 
-    plots.append(fig)
-    with cols[i % 2]:
-        st.pyplot(fig, use_container_width=True)
+        # Plot
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(avg_change.index, avg_change.values, marker='o', color='black')
+        ax.set_title(f"{exp_type} Expectancy Change", fontsize=14)
+        ax.set_xlabel("Time Band (Minutes)")
+        ax.set_ylabel("Avg Change")
+        ax.grid(True)
+        fig.tight_layout()
+
+        plots.append(fig)
+        with cols[i % 2]:
+            st.pyplot(fig, use_container_width=True)
+else:
+    st.warning("Please select at least one expectancy type to display charts.")
 
 # --- Export to PDF Button ---
 def export_all_to_pdf(figures):
