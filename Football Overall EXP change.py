@@ -111,7 +111,7 @@ def compute_exp_by_role(df, role='Favourite', target='Goals'):
 plots = []
 
 if exp_types:
-    cols = st.columns(2)
+    layout_cols = st.columns(2) if len(exp_types) > 1 else [st]
 
     for i, exp_type in enumerate(exp_types[:6]):
         role = 'Favourite' if 'Favourite' in exp_type else 'Underdog'
@@ -131,17 +131,20 @@ if exp_types:
 
         avg_change = df_changes.groupby('Time Band')['Change'].mean()
 
-        # Plot
+        # Dynamic title with filter context
+        title_line = f"{exp_type} Expectancy Change"
+        filter_context = f"Date: {start_date.strftime('%d/%m/%Y')}–{end_date.strftime('%d/%m/%Y')} | Fav: {', '.join(fav_filter)} | Scoreline: {', '.join(scoreline_filter)}"
+
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.plot(avg_change.index, avg_change.values, marker='o', color='black')
-        ax.set_title(f"{exp_type} Expectancy Change", fontsize=14)
+        ax.set_title(f"{title_line}\n{filter_context}", fontsize=12)
         ax.set_xlabel("Time Band (Minutes)")
         ax.set_ylabel("Avg Change")
         ax.grid(True)
         fig.tight_layout()
 
         plots.append(fig)
-        with cols[i % 2]:
+        with layout_cols[i % len(layout_cols)]:
             st.pyplot(fig, use_container_width=True)
 else:
     st.warning("Please select at least one expectancy type to display charts.")
