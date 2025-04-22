@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr 22 12:36:41 2025
-
-@author: Sukhdeep.Sangha
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -46,7 +39,7 @@ scoreline_options = ['Favourite Winning', 'Scores Level', 'Underdog Winning']
 fav_filter = st.sidebar.multiselect("Goal Favouritism Level", fav_options, default=fav_options)
 scoreline_filter = st.sidebar.multiselect("Goal Scoreline Filter", scoreline_options, default=scoreline_options)
 
-st.markdown("*Favourites are determined using Goal Expectancy at minute 0")
+st.markdown("*Favourites are determined using Goal Expectancy at the earliest available minute in each match")
 
 # --- Functions ---
 
@@ -81,7 +74,8 @@ def compute_exp_by_role(df, role='Favourite', target='Goals'):
 
     for event_id, group in df.groupby('SRC_EVENT_ID'):
         group = group.sort_values('MINUTES')
-        base_row = group[group['MINUTES'] == 0].iloc[0]
+        earliest_minute = group['MINUTES'].min()
+        base_row = group[group['MINUTES'] == earliest_minute].iloc[0]
 
         home_exp_0 = base_row['GOAL_EXP_HOME']
         away_exp_0 = base_row['GOAL_EXP_AWAY']
