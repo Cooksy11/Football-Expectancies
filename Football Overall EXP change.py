@@ -111,7 +111,7 @@ def compute_exp_by_role(df, role='Favourite', target='Goals'):
 plots = []
 
 if exp_types:
-    layout_cols = st.columns(2) if len(exp_types) > 1 else [st]
+    layout_cols = st.columns(2) if len(exp_types) > 1 else []
 
     for i, exp_type in enumerate(exp_types[:6]):
         role = 'Favourite' if 'Favourite' in exp_type else 'Underdog'
@@ -131,7 +131,6 @@ if exp_types:
 
         avg_change = df_changes.groupby('Time Band')['Change'].mean()
 
-        # Dynamic title with filter context
         title_line = f"{exp_type} Expectancy Change"
         filter_context = f"Date: {start_date.strftime('%d/%m/%Y')}–{end_date.strftime('%d/%m/%Y')} | Fav: {', '.join(fav_filter)} | Scoreline: {', '.join(scoreline_filter)}"
 
@@ -144,7 +143,11 @@ if exp_types:
         fig.tight_layout()
 
         plots.append(fig)
-        with layout_cols[i % len(layout_cols)]:
+
+        if layout_cols:
+            with layout_cols[i % 2]:
+                st.pyplot(fig, use_container_width=True)
+        else:
             st.pyplot(fig, use_container_width=True)
 else:
     st.warning("Please select at least one expectancy type to display charts.")
